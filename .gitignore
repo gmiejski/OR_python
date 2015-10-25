@@ -6,7 +6,10 @@ __pycache__/
 
 # C extensions
 *.so
-
+history.txt
+src/draw_example.py
+src/event.py
+src/test.py
 # Distribution / packaging
 .Python
 env/

@@ -88,5 +88,9 @@ class Tab:
         self.debugger.print_table("min and max for rank: " + str(self.rank) + " - " + str(self.x_range_up) + "," +
                                   str(self.x_range_down))
 
+    def print_readable(self, you_sure):
+        for row in self.table:
+            mapped_row = list(map(lambda field: field.readable_state(), row))
+            self.debugger.print_history(mapped_row)
 
 

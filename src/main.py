@@ -21,7 +21,7 @@ if len(sys.argv) < 3:
 N = int(sys.argv[1])
 iterations = int(sys.argv[2])
 # debug = True
-debugger = Debugger(on=False, cell=False, table=False)
+debugger = Debugger(on=False, cell=False, table=False, program_info=False, history=True)
 
 rank = comm.Get_rank()
 processes = comm.Get_size()
@@ -35,11 +35,11 @@ mapper = Mapper(N, rank, rows, debugger)
 table = Tab(N, rank, rows, mapper, debugger)
 
 initial_rank = int(processes / 2)
-print("initial_rank = " + str(initial_rank))
+debugger.print_program_info("initial_rank = " + str(initial_rank))
 if rank == initial_rank:
     target_x = int(N / 2)
     target_y = int(N / 2)
-    print("First cell = " + str(target_x) + "," + str(target_y))
+    debugger.print_program_info("First cell = " + str(target_x) + "," + str(target_y))
     initial_bacteria = Bacteria(target_x, target_y, chance=1)
     table.update_table([initial_bacteria])
 
@@ -81,16 +81,32 @@ def receive_bacterias(processes, rank):
 def block_and_print_table(with_rank=False, initial=False, with_delimeter=False, delimeter="", you_sure=False):
     comm.Barrier()
     if initial and rank == 0:
-        print("Initial table info")
+        debugger.print_program_info("Initial table info")
     comm.Barrier()
     for pp in range(0, processes):
         comm.Barrier()
         if pp == rank:
             comm.Barrier()
             if with_rank:
-                print("rank = " + str(rank))
+                debugger.print_program_info("rank = " + str(rank))
             comm.Barrier()
             table.print(you_sure)
+    comm.Barrier()
+    if with_delimeter and rank == 0:
+        debugger.print_table(delimeter, you_sure)
+    comm.Barrier()
+
+
+def print_readable_format(with_delimeter=False, delimeter="", you_sure=False):
+    comm.Barrier()
+    if rank == 0:
+        print("#" + str(i))
+    comm.Barrier()
+    for pp in range(0, processes):
+        comm.Barrier()
+        if pp == rank:
+            comm.Barrier()
+            table.print_readable(you_sure)
     comm.Barrier()
     if with_delimeter and rank == 0:
         debugger.print_table(delimeter, you_sure)
@@ -103,11 +119,13 @@ start = MPI.Wtime()
 
 for i in range(0, iterations):
     if rank == 0:
-        print("Iteration: " + str(i))
-    # comm.Barrier()
+        debugger.print_program_info("Iteration: " + str(i))
+    comm.Barrier()
     if debugger.table:
         block_and_print_table(with_delimeter=True, delimeter="***")
-        comm.Barrier()
+    elif debugger.history:
+        print_readable_format(i,you_sure=True)
+        # comm.Barrier()
     bacterias_created = table.create_bacterias()
     local_bacterias, remote_bacterias = table.filter_local_bacterias(bacterias_created)
     debugger.print_cell(
@@ -119,7 +137,7 @@ for i in range(0, iterations):
     table.update_table(received_bacterias)
     table.update_cells_state()
     debugger.print_cell('Iteration: +' + str(i) + ' , after sending from ' + str(rank))
-    # comm.Barrier()
+    comm.Barrier()
 
 # block_and_print_table(you_sure=True)
 # block_and_print_table()

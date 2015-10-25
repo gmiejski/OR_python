@@ -46,3 +46,6 @@ class Field():
 
     def can_infect_others(self):
         return self.state.infected()
+
+    def readable_state(self):
+        return str(self.state)
