@@ -1,5 +1,5 @@
 class Bacteria:
-    def __init__(self, target_x, target_y, chance=0.3):
+    def __init__(self, target_x, target_y, chance=0.6):
         self.target_x = target_x
         self.target_y = target_y
         self.chance = chance

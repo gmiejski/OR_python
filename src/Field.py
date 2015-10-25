@@ -43,3 +43,6 @@ class Field():
 
     def update_state(self):
         self.state.update_state()
+
+    def can_infect_others(self):
+        return self.state.infected()

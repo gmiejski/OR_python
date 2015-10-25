@@ -15,12 +15,13 @@ def enum(**enums):
 #########################
 comm = MPI.COMM_WORLD
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 3:
     comm.Abort()
 
 N = int(sys.argv[1])
+iterations = int(sys.argv[2])
 # debug = True
-debugger = Debugger(on=False, cell=True, table=True)
+debugger = Debugger(on=False, cell=False, table=False)
 
 rank = comm.Get_rank()
 processes = comm.Get_size()
@@ -36,18 +37,28 @@ table = Tab(N, rank, rows, mapper, debugger)
 initial_rank = int(processes / 2)
 print("initial_rank = " + str(initial_rank))
 if rank == initial_rank:
-    target_x = N / 2
-    target_y = N / 2
+    target_x = int(N / 2)
+    target_y = int(N / 2)
     print("First cell = " + str(target_x) + "," + str(target_y))
     initial_bacteria = Bacteria(target_x, target_y, chance=1)
     table.update_table([initial_bacteria])
 
 
-def send_bacterias(processes, rank, bacterias_info):
+def split_bacterias_per_process(bacterias_info, min_x, max_x):
+    send_up = list(filter(lambda bacteria: bacteria.target_x == min_x - 1, bacterias_info))
+    send_down = list(filter(lambda bacteria: bacteria.target_x == max_x + 1, bacterias_info))
+    # print(len(send_up), len(send_down), len(bacterias_info))
+    # print(bacterias_info, min_x, max_x)
+    assert (len(send_up) + len(send_down)) == len(bacterias_info)
+    return send_up, send_down
+
+
+def send_bacterias(processes, rank, bacterias_info, min_x, max_x):
+    bacterias_up, bacterias_down = split_bacterias_per_process(bacterias_info, min_x, max_x)
     if rank - 1 >= 0:
-        comm.send(bacterias_info, dest=rank - 1)
+        comm.send(bacterias_up, dest=rank - 1)
     if rank + 1 <= processes - 1:
-        comm.send(bacterias_info, dest=rank + 1)
+        comm.send(bacterias_down, dest=rank + 1)
 
 
 def receive_bacterias(processes, rank):
@@ -66,14 +77,36 @@ def receive_bacterias(processes, rank):
     debugger.print_cell("Received :" + str(result) + " at rank : " + str(rank))
     return result
 
-for i in range(0, 100):
-    if debugger.table:
-        for pp in range(0, processes):
-            comm.Barrier()
-            if pp == rank:
-                table.print_debugger(debugger)
+
+def block_and_print_table(with_rank=False, initial=False, with_delimeter=False, delimeter="", you_sure=False):
+    comm.Barrier()
+    if initial and rank == 0:
+        print("Initial table info")
+    comm.Barrier()
+    for pp in range(0, processes):
         comm.Barrier()
-        debugger.print_table("***")
+        if pp == rank:
+            comm.Barrier()
+            if with_rank:
+                print("rank = " + str(rank))
+            comm.Barrier()
+            table.print(you_sure)
+    comm.Barrier()
+    if with_delimeter and rank == 0:
+        debugger.print_table(delimeter, you_sure)
+    comm.Barrier()
+
+
+block_and_print_table(with_delimeter=True)
+
+start = MPI.Wtime()
+
+for i in range(0, iterations):
+    if rank == 0:
+        print("Iteration: " + str(i))
+    # comm.Barrier()
+    if debugger.table:
+        block_and_print_table(with_delimeter=True, delimeter="***")
         comm.Barrier()
     bacterias_created = table.create_bacterias()
     local_bacterias, remote_bacterias = table.filter_local_bacterias(bacterias_created)
@@ -81,17 +114,15 @@ for i in range(0, 100):
         "returning bacterias from process " + str(rank) + " : LOCAL-> " + str(local_bacterias) + ", REMOTE-> " + str(
             remote_bacterias))
     table.update_table(local_bacterias)
-    send_bacterias(processes, rank, remote_bacterias)
+    send_bacterias(processes, rank, remote_bacterias, table.x_range_up, table.x_range_down)
     received_bacterias = receive_bacterias(processes, rank)
     table.update_table(received_bacterias)
     table.update_cells_state()
     debugger.print_cell('Iteration: +' + str(i) + ' , after sending from ' + str(rank))
-    comm.Barrier()
+    # comm.Barrier()
 
-for i in range(0, processes):
-    comm.Barrier()
-    if i == rank:
-        table.print_debugger(debugger)
-comm.Barrier()
-debugger.print_table("***")
-comm.Barrier()
+# block_and_print_table(you_sure=True)
+# block_and_print_table()
+
+end = MPI.Wtime()
+print(end - start)

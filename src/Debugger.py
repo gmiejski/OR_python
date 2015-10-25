@@ -8,8 +8,7 @@ class Debugger:
         if self.on or self.cell:
             print(string)
 
-
-    def print_table(self, table):
-        if self.on or self.table:
+    def print_table(self, table, you_sure=False):
+        if self.on or self.table or you_sure:
             print(table)
 

@@ -11,6 +11,9 @@ class Tab:
         self.table = self.create_init_table(N, rows)
         self.infected = collections.defaultdict(lambda: collections.defaultdict(lambda: None))
         self.debugger = debugger
+        self.x_range_up = None
+        self.x_range_down = None
+        self.init_x_range()
 
     def create_init_table(self, N, rows):
         tab = []
@@ -26,9 +29,10 @@ class Tab:
 
     def create_bacterias(self):
         lists = []
-        for x, y in self.infected.items():
-            for xx, yy in y.items():
-                lists.append(yy.generate_bacterias())
+        for row in self.table:
+            for cell in row:
+                if cell.can_infect_others():
+                    lists.append(cell.generate_bacterias())
         result = sum(lists, [])
         filtered_result = list(
             filter(lambda bacteria: 0 <= bacteria.target_x < self.N and 0 <= bacteria.target_y < self.N, result))
@@ -57,22 +61,32 @@ class Tab:
             for bacteria in bacterias:
                 local_x, local_y = self.mapper.to_inner(bacteria.target_x, bacteria.target_y)
                 self.debugger.print_cell(
-                    "Applying bacteria for " + str(local_x) + "," + str(local_y) + "len(table[local_x]=" + str(
-                        len(self.table)))
-                got_infected = self.table[local_x][local_y].apply_bacteria(bacteria)
-                if got_infected:
-                    self.infected[local_x][local_y] = self.table[local_x][local_y]
+                    "Applying bacteria for rank= " + str(self.rank) + " -> (" + str(local_x) + "," + str(
+                        local_y) + "), len(table)= " + str(len(self.table)) +
+                    ", len(table[local_x])= " + str(len(self.table[local_x])))
+                self.debugger.print_cell(str(self.table[local_x]))
+                self.table[local_x][local_y].apply_bacteria(bacteria)
 
-
-    def print_debugger(self, debugger):
+    def print(self, you_sure=False):
         for row in self.table:
-            debugger.print_table(row)
+            self.debugger.print_table(row, you_sure)
 
     def update_cells_state(self):
         for row in self.table:
             for cell in row:
                 cell.update_state()
 
+    def x_range(self):
+        return self.x_range
+
+    def init_x_range(self):
+        x_range = set()
+        for row in self.table:
+            x_range.add(row[0].x)
+        self.x_range_up = min(x_range)
+        self.x_range_down = max(x_range)
+        self.debugger.print_table("min and max for rank: " + str(self.rank) + " - " + str(self.x_range_up) + "," +
+                                  str(self.x_range_down))
 
 
 
