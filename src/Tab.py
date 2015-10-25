@@ -3,13 +3,14 @@ from Field import Field
 
 
 class Tab:
-    def __init__(self, N, rank, rows, mapper):
+    def __init__(self, N, rank, rows, mapper, debugger):
         self.rows = rows
         self.rank = rank
         self.N = N
         self.mapper = mapper
         self.table = self.create_init_table(N, rows)
-        self.infected = collections.defaultdict(lambda: {})
+        self.infected = collections.defaultdict(lambda: collections.defaultdict(lambda: None))
+        self.debugger = debugger
 
     def create_init_table(self, N, rows):
         tab = []
@@ -29,8 +30,9 @@ class Tab:
             for xx, yy in y.items():
                 lists.append(yy.generate_bacterias())
         result = sum(lists, [])
-        filtered_result = list(filter(lambda bacteria: 0 <= bacteria.target_x < self.N and 0 <= bacteria.target_y < self.N, result))
-        print("returning bacterias from process " + str(self.rank) + " : " + str(filtered_result))
+        filtered_result = list(
+            filter(lambda bacteria: 0 <= bacteria.target_x < self.N and 0 <= bacteria.target_y < self.N, result))
+        self.debugger.print_cell("returning bacterias from process " + str(self.rank) + " : " + str(filtered_result))
         return filtered_result
 
     def filter_local_bacterias(self, bacterias_info):
@@ -54,13 +56,23 @@ class Tab:
         if bacterias is not None:
             for bacteria in bacterias:
                 local_x, local_y = self.mapper.to_inner(bacteria.target_x, bacteria.target_y)
-                print("Applying bacteria for " + str(local_x) + "," + str(local_y))
+                self.debugger.print_cell(
+                    "Applying bacteria for " + str(local_x) + "," + str(local_y) + "len(table[local_x]=" + str(
+                        len(self.table)))
                 got_infected = self.table[local_x][local_y].apply_bacteria(bacteria)
                 if got_infected:
                     self.infected[local_x][local_y] = self.table[local_x][local_y]
 
-    def print(self):
+
+    def print_debugger(self, debugger):
         for row in self.table:
-            print(row)
+            debugger.print_table(row)
+
+    def update_cells_state(self):
+        for row in self.table:
+            for cell in row:
+                cell.update_state()
+
+
 
 

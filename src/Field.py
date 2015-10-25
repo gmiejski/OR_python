@@ -1,5 +1,6 @@
 import random
 from Bacteria import Bacteria
+from State import State
 
 
 class Field():
@@ -7,14 +8,11 @@ class Field():
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.state = "healthy"
-
-    def state(self):
-        return self.state
+        self.state = State()
 
     def generate_bacterias(self):
         bacterias = []
-        if self.state == "infected":
+        if self.state.infected():
             bacterias.append(Bacteria(self.x - 1, self.y))
             bacterias.append(Bacteria(self.x + 1, self.y))
             bacterias.append(Bacteria(self.x, self.y - 1))
@@ -29,11 +27,11 @@ class Field():
         if bacteria.target_x != self.x or bacteria.target_y != self.y:
             raise Exception("Field (" + str(self.x) + "," + str(self.y) + " cannot get bacteria for cell: (" + str(
                 bacteria.target_x) + "," + str(bacteria.target_y))
-        elif self.state == "protected":
+        elif self.state.protected():
             return False
-        elif self.state == "healthy":
+        elif self.state.is_healthy():
             if random.random() < bacteria.chance:
-                self.state = "infected"
+                self.state.infect()
                 return True
         return False
 
@@ -41,4 +39,7 @@ class Field():
         return str(self)
 
     def __str__(self):
-        return "Field(" + str(self.x) + "," + str(self.y) + "," + self.state[0:6] + ")"
+        return "Field(" + str(self.x) + "," + str(self.y) + "," + str(self.state) + ")"
+
+    def update_state(self):
+        self.state.update_state()
